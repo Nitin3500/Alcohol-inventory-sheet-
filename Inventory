@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Alcohol Inventory Sheet</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .form-group {
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-group label {
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    tfoot td {
+      font-weight: bold;
+      background-color: #eee;
+    }
+    input[type="number"] {
+      width: 60px;
+    }
+    input[type="text"], input[type="date"] {
+      padding: 5px;
+      font-size: 14px;
+    }
+    .buttons {
+      text-align: center;
+      margin: 20px 0;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .category-row {
+      background-color: #ddd;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Alcohol Inventory Sheet</h1>
+
+    <div class="form-group">
+      <label for="inventoryDate">Date:</label>
+      <input type="date" id="inventoryDate" name="inventoryDate" required>
+    </div>
+
+    <div class="buttons">
+      <button onclick="printInventory()">🖨️ Print</button>
+      <button onclick="exportToCSV()">📄 Export to Excel</button>
+    </div>
+
+    <form id="inventoryForm">
+      <table id="inventoryTable">
+        <thead>
+          <tr>
+            <th>Alcohol Name</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody">
+          <!-- Populated by JS -->
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td id="totalQuantity">0</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="form-group" style="margin-top: 40px;">
+        <label for="signature">Signature:</label>
+        <input type="text" id="signature" name="signature" placeholder="Enter your name or sign here" />
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const inventoryData = {
+      "Whisky": ["Chivas 12yrs", "Glenlivet 12yrs", "Glenfiddich 12yrs"],
+      "Vodka": ["Absolut Vodka", "Grey Goose Vodka", "Russian Vodka"],
+      "Gin": ["Bombay Sapphire", "Hendrik's Gin", "Ruco Gin"],
+      "Wine": ["Red Wine", "White Wine"],
+      "Rum": ["Old Monk", "Bacardi"],
+      "Beer": ["Kingfisher Ultra", "Corona Beer"],
+      "Others": ["Champagne", "Tequila"]
+    };
+
+    const tbody = document.getElementById("inventoryBody");
+
+    let rowIndex = 0;
+    for (const [category, items] of Object.entries(inventoryData)) {
+      const catRow = document.createElement("tr");
+      catRow.className = "category-row";
+      const catCell = document.createElement("td");
+      catCell.colSpan = 2;
+      catCell.textContent = category;
+      catRow.appendChild(catCell);
+      tbody.appendChild(catRow);
+
+      items.forEach(item => {
+        const row = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        nameCell.textContent = item;
+
+        const qtyCell = document.createElement("td");
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = 0;
+        input.value = 0;
+        input.name = `qty_${rowIndex}`;
+        input.addEventListener("input", updateTotal);
+
+        qtyCell.appendChild(input);
+        row.appendChild(nameCell);
+        row.appendChild(qtyCell);
+        tbody.appendChild(row);
+
+        rowIndex++;
+      });
+    }
+
+    function updateTotal() {
+      const inputs = document.querySelectorAll('input[type="number"]');
+      let total = 0;
+      inputs.forEach(input => {
+        total += parseInt(input.value) || 0;
+      });
+      document.getElementById("totalQuantity").textContent = total;
+    }
+
+    function printInventory() {
+      window.print();
+    }
+
+    function exportToCSV() {
+      let csvContent = "data:text/csv;charset=utf-8,Date," + document.getElementById("inventoryDate").value + "\n";
+      csvContent += "Alcohol Name,Quantity\n";
+      const rows = document.querySelectorAll("#inventoryTable tbody tr");
+      rows.forEach(row => {
+        if (row.classList.contains("category-row")) return; // Skip category headers
+        const name = row.cells[0].textContent;
+        const qty = row.querySelector("input")?.value || 0;
+        csvContent += `${name},${qty}\n`;
+      });
+      csvContent += `Total,${document.getElementById("totalQuantity").textContent}\n`;
+      csvContent += `Signature,${document.getElementById("signature").value}\n`;
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "alcohol_inventory.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
