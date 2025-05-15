@@ -12,12 +12,13 @@
       padding: 10px;
     }
     .container {
-      max-width: 1000px;
+      max-width: 100%;
       margin: auto;
       background-color: #fff;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      overflow-x: auto;
     }
     h1 {
       text-align: center;
@@ -43,11 +44,13 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
+      min-width: 1200px;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 8px;
+      text-align: center;
     }
     th {
       background-color: #f0f0f0;
@@ -57,10 +60,10 @@
       font-weight: bold;
       text-align: left;
     }
-    input[type="number"] {
+    input[type="number"], input[type="text"] {
       width: 100%;
-      padding: 6px;
       box-sizing: border-box;
+      padding: 6px;
     }
     tfoot td {
       font-weight: bold;
@@ -120,14 +123,32 @@
       <thead>
         <tr>
           <th>Alcohol Name</th>
-          <th>Quantity</th>
+          <th>Opening</th>
+          <th>Received</th>
+          <th>Total Bottles</th>
+          <th>Consumed</th>
+          <th>Return</th>
+          <th>Sealed Return</th>
+          <th>Breakage</th>
+          <th>Loss/Theft</th>
+          <th>Closing</th>
+          <th>Comments</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
       <tfoot>
         <tr>
           <td>Total</td>
-          <td id="totalQuantity">0</td>
+          <td id="totalOpening">0</td>
+          <td id="totalReceived">0</td>
+          <td id="totalTotal">0</td>
+          <td id="totalConsumed">0</td>
+          <td id="totalReturn">0</td>
+          <td id="totalSealed">0</td>
+          <td id="totalBreakage">0</td>
+          <td id="totalLoss">0</td>
+          <td id="totalClosing">0</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -154,13 +175,14 @@
     };
 
     const tableBody = document.getElementById("tableBody");
-
     let index = 0;
+    const fields = ["opening", "received", "total", "consumed", "return", "sealed", "breakage", "loss", "closing", "comments"];
+
     for (const [category, items] of Object.entries(alcoholData)) {
       const catRow = document.createElement("tr");
       catRow.classList.add("category");
       const catCell = document.createElement("td");
-      catCell.colSpan = 2;
+      catCell.colSpan = fields.length + 1;
       catCell.textContent = category;
       catRow.appendChild(catCell);
       tableBody.appendChild(catRow);
@@ -169,29 +191,45 @@
         const row = document.createElement("tr");
         const nameCell = document.createElement("td");
         nameCell.textContent = name;
-
-        const qtyCell = document.createElement("td");
-        const input = document.createElement("input");
-        input.type = "number";
-        input.min = 0;
-        input.value = 0;
-        input.name = `qty_${index++}`;
-        input.addEventListener("input", updateTotal);
-
-        qtyCell.appendChild(input);
         row.appendChild(nameCell);
-        row.appendChild(qtyCell);
+
+        fields.forEach(field => {
+          const td = document.createElement("td");
+          const input = document.createElement("input");
+          input.name = `${field}_${index}`;
+          input.type = field === "comments" ? "text" : "number";
+          input.value = field === "comments" ? "" : "0";
+          input.min = 0;
+          if (field !== "comments") input.addEventListener("input", updateTotal);
+          td.appendChild(input);
+          row.appendChild(td);
+        });
+
         tableBody.appendChild(row);
+        index++;
       });
     }
 
     function updateTotal() {
-      const inputs = document.querySelectorAll('input[type="number"]');
-      let total = 0;
-      inputs.forEach(input => {
-        total += parseInt(input.value) || 0;
+      const totals = {
+        opening: 0, received: 0, total: 0, consumed: 0,
+        return: 0, sealed: 0, breakage: 0, loss: 0, closing: 0
+      };
+
+      document.querySelectorAll("#tableBody tr:not(.category)").forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        fields.forEach((field, i) => {
+          if (field !== "comments") {
+            totals[field] += parseInt(inputs[i].value) || 0;
+          }
+        });
       });
-      document.getElementById("totalQuantity").textContent = total;
+
+      Object.keys(totals).forEach(field => {
+        const id = `total${field.charAt(0).toUpperCase() + field.slice(1)}`;
+        const element = document.getElementById(id);
+        if (element) element.textContent = totals[field];
+      });
     }
 
     function printInventory() {
@@ -202,16 +240,21 @@
       const date = document.getElementById("inventoryDate").value || "Not Specified";
       const signature = document.getElementById("signature").value || "Not Signed";
 
-      let csv = `Date,${date}\nAlcohol Name,Quantity\n`;
+      let csv = `Date,${date}\nAlcohol Name,${fields.map(f => f.charAt(0).toUpperCase() + f.slice(1)).join(",")}\n`;
 
       document.querySelectorAll("#tableBody tr").forEach(row => {
         if (row.classList.contains("category")) return;
         const name = row.cells[0].textContent;
-        const qty = row.querySelector("input").value || 0;
-        csv += `"${name}",${qty}\n`;
+        const values = Array.from(row.querySelectorAll("input")).map(input => input.value || "");
+        csv += `"${name}",${values.join(",")}\n`;
       });
 
-      csv += `Total,${document.getElementById("totalQuantity").textContent}\n`;
+      const totalRow = fields.map(f => {
+        if (f === "comments") return "";
+        return document.getElementById(`total${f.charAt(0).toUpperCase() + f.slice(1)}`).textContent;
+      });
+
+      csv += `Total,${totalRow.join(",")}\n`;
       csv += `Signature,${signature}\n`;
 
       const blob = new Blob([csv], { type: 'text/csv' });
